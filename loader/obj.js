@@ -61,6 +61,17 @@ OBJLoader.prototype = {
 		var vertices = [];
 		var normals = [];
 		var uvs = [];
+		var allVertices = [];
+		var allNormals = [];
+		var allUvs = [];
+		var vecIndex = {};
+		var vnIndex = {};
+		var uvIndex = {};
+		var vecDecimalPointLength = 0;
+		var vnDecimalPointLength = 0;
+		var uvDecimalPointLength = 0;
+		var mtls = [];
+		var mtlIndex = {};
 
 		function addObject( name ) {
 
@@ -78,7 +89,17 @@ OBJLoader.prototype = {
 			object = {
 				name: name,
 				geometry: geometry,
-				material: material
+				material: material,
+				f4: {
+					v: [],
+					uv: [],
+					vn: []
+				},
+				f3: {
+					v: [],
+					uv: [],
+					vn: []
+				}
 			};
 
 			objects.push( object );
@@ -88,25 +109,31 @@ OBJLoader.prototype = {
 		function parseVertexIndex( value ) {
 
 			var index = parseInt( value );
+			index = ( index >= 0 ? index - 1 : index + allVertices.length / 3 ) * 3;
+			var key = generateKey( allVertices[ index ], allVertices[ index + 1 ], allVertices[ index + 2 ] );
 
-			return ( index >= 0 ? index - 1 : index + vertices.length / 3 ) * 3;
+			return vecIndex[ key ];
 
 		}
 
 		function parseNormalIndex( value ) {
 
 			var index = parseInt( value );
+			index = ( index >= 0 ? index - 1 : index + allNormals.length / 3 ) * 3;
 
-			return ( index >= 0 ? index - 1 : index + normals.length / 3 ) * 3;
+			var key = generateKey( allNormals[ index ], allNormals[ index + 1 ], allNormals[ index + 2 ] );
 
+			return vnIndex[ key ];
 		}
 
 		function parseUVIndex( value ) {
 
 			var index = parseInt( value );
 
-			return ( index >= 0 ? index - 1 : index + uvs.length / 2 ) * 2;
+			index = ( index >= 0 ? index - 1 : index + allUvs.length / 2 ) * 2;
+			var key = generateKey2( allUvs[ index ], allUvs[ index + 1 ] );
 
+			return uvIndex[ key ];
 		}
 
 		function addVertex( a, b, c ) {
@@ -139,6 +166,30 @@ OBJLoader.prototype = {
 
 		}
 
+		function addVec2F3( a, b, c ) {
+			object.f3.v.push( a, b, c );
+		}
+
+		function addVec2F4( a, b, c, d ) {
+			object.f4.v.push( a, b, c, d );
+		}
+
+		function addUv2F3( a, b, c ) {
+			object.f3.uv.push( a, b, c );
+		}
+
+		function addUv2F4( a, b, c, d ) {
+			object.f4.uv.push( a, b, c, d );
+		}
+
+		function addVn2F3( a, b, c ) {
+			object.f3.vn.push( a, b, c );
+		}
+
+		function addVn2F4( a, b, c, d ) {
+			object.f4.vn.push( a, b, c, d );
+		}
+
 		function addFace( a, b, c, d,  ua, ub, uc, ud, na, nb, nc, nd ) {
 
 			var ia = parseVertexIndex( a );
@@ -149,6 +200,7 @@ OBJLoader.prototype = {
 			if ( d === undefined ) {
 
 				addVertex( ia, ib, ic );
+				addVec2F3( ia, ib, ic );
 
 			} else {
 
@@ -156,6 +208,7 @@ OBJLoader.prototype = {
 
 				addVertex( ia, ib, id );
 				addVertex( ib, ic, id );
+				addVec2F4( ia, ib, ic, id );
 
 			}
 
@@ -168,6 +221,7 @@ OBJLoader.prototype = {
 				if ( d === undefined ) {
 
 					addUV( ia, ib, ic );
+					addUv2F3( ia, ib, ic );
 
 				} else {
 
@@ -175,6 +229,7 @@ OBJLoader.prototype = {
 
 					addUV( ia, ib, id );
 					addUV( ib, ic, id );
+					addUv2F4( ia, ib, ic, id );
 
 				}
 
@@ -189,6 +244,7 @@ OBJLoader.prototype = {
 				if ( d === undefined ) {
 
 					addNormal( ia, ib, ic );
+					addVn2F3( ia, ib, ic );
 
 				} else {
 
@@ -196,6 +252,7 @@ OBJLoader.prototype = {
 
 					addNormal( ia, ib, id );
 					addNormal( ib, ic, id );
+					addVn2F4( ia, ib, ic, id );
 
 				}
 
@@ -234,6 +291,25 @@ OBJLoader.prototype = {
 
 		var lines = text.split( '\n' );
 
+		function generateKey( x, y, z ) {
+			return x + "_" + y + "_" + z;
+		}
+
+		function generateKey2( u, v ) {
+			return u + "_" + v;
+		}
+
+		function getDecimalPointLength(number) {
+	    var numbers = String(number).split('.'),
+	        result  = 0;
+
+	    if (numbers[1]) {
+	        result = numbers[1].length;
+	    }
+
+	    return result;
+		}
+
 		for ( var i = 0; i < lines.length; i ++ ) {
 
 			var line = lines[ i ];
@@ -248,31 +324,72 @@ OBJLoader.prototype = {
 			} else if ( ( result = vertex_pattern.exec( line ) ) !== null ) {
 
 				// ["v 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
-
-				vertices.push(
-					parseFloat( result[ 1 ] ),
-					parseFloat( result[ 2 ] ),
-					parseFloat( result[ 3 ] )
+				allVertices.push(
+					result[ 1 ],
+					result[ 2 ],
+					result[ 3 ]
 				);
+
+				var key = generateKey( result[ 1 ], result[ 2 ], result[ 3 ] );
+				if ( vecIndex[ key ] === undefined ) {
+					vecIndex[ key ] = vertices.length;
+					vertices.push(
+						parseFloat( result[ 1 ] ),
+						parseFloat( result[ 2 ] ),
+						parseFloat( result[ 3 ] )
+					);
+
+					var length = getDecimalPointLength( result[ 1 ] );
+					if ( length > vecDecimalPointLength ) {
+						vecDecimalPointLength = length;
+					}
+				}
 
 			} else if ( ( result = normal_pattern.exec( line ) ) !== null ) {
 
 				// ["vn 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
-
-				normals.push(
-					parseFloat( result[ 1 ] ),
-					parseFloat( result[ 2 ] ),
-					parseFloat( result[ 3 ] )
+				allNormals.push(
+					result[ 1 ],
+					result[ 2 ],
+					result[ 3 ]
 				);
+
+				var key = generateKey( result[ 1 ], result[ 2 ], result[ 3 ] );
+				if ( vnIndex[ key ] === undefined ) {
+					vnIndex[ key ] = normals.length;
+					normals.push(
+						parseFloat( result[ 1 ] ),
+						parseFloat( result[ 2 ] ),
+						parseFloat( result[ 3 ] )
+					);
+
+					var length = getDecimalPointLength( result[ 1 ] );
+					if ( length > vnDecimalPointLength ) {
+						vnDecimalPointLength = length;
+					}
+				}
 
 			} else if ( ( result = uv_pattern.exec( line ) ) !== null ) {
 
 				// ["vt 0.1 0.2", "0.1", "0.2"]
-
-				uvs.push(
-					parseFloat( result[ 1 ] ),
-					parseFloat( result[ 2 ] )
+				allUvs.push(
+					result[ 1 ],
+					result[ 2 ]
 				);
+
+				var key = generateKey2( result[ 1 ], result[ 2 ] );
+				if ( uvIndex[ key ] === undefined ) {
+					uvIndex[ key ] = uvs.length;
+					uvs.push(
+						parseFloat( result[ 1 ] ),
+						parseFloat( result[ 2 ] )
+					);
+
+					var length = getDecimalPointLength( result[ 1 ] );
+					if ( length > uvDecimalPointLength ) {
+						uvDecimalPointLength = length;
+					}
+				}
 
 			} else if ( ( result = face_pattern1.exec( line ) ) !== null ) {
 
@@ -361,6 +478,8 @@ OBJLoader.prototype = {
 			object = objects[ i ];
 			var geometry = object.geometry;
 
+			if ( !geometry.vertices.length ) continue;
+
 			var buffergeometry = {
         type: "Buffer",
         attrs: {
@@ -378,37 +497,68 @@ OBJLoader.prototype = {
 			}
 
 			var material;
+			var shading = object.material.smooth ? 2 /*THREE.SmoothShading*/ : 1 /*THREE.FlatShading*/;
+			var mtlNumber;
+			var key = object.material.name;
 
 			if ( this.materials !== null ) {
 
-				material = this.materials.create( object.material.name );
+				if ( mtlIndex[ key ] === undefined ) {
+					material = this.materials.create( key );
+					material.value.shading = shading;
+
+					mtlIndex[ key ] = mtls.length;
+					mtls.push( material );
+				}
+
+				mtlNumber = mtlIndex[ key ];
 
 			}
 
-			if ( !material ) {
+			if ( mtlNumber === undefined ) {
 
-				material = {
-          type: "MeshPhong",
-          value: {
-            color: "#ccc"
-          }
-        };
-				material.name = object.material.name;
+				if ( mtlIndex[ key ] === undefined ) {
+					material = {
+	          type: "MeshPhong",
+	          value: {
+	            color: "#ccc"
+	          }
+	        };
+
+					mtlIndex[ key ] = mtls.length;
+					mtls.push( material );
+				}
+
+				mtlNumber = mtlIndex[ key ];
 
 			}
-
-			material.shading = object.material.smooth ? 2 /*THREE.SmoothShading*/ : 1 /*THREE.FlatShading*/;
 
 			container.push({
-        geo: buffergeometry,
-        mtl: material
+        m: mtlNumber,
+				f3: object.f3,
+				f4: object.f4
       });
 
 		}
 
 		console.timeEnd( 'OBJLoader' );
 
-		return container;
+		return [{
+		  v: vertices.map( function( n ) {
+				return Math.round( n * Math.pow( 10, vecDecimalPointLength ) );
+			}),
+		  vs: 1 / Math.pow( 10, vecDecimalPointLength ),
+		  uv: uvs.map( function( n ) {
+				return Math.round( n * Math.pow( 10, uvDecimalPointLength ) );
+			}),
+		  us: 1 / Math.pow( 10, uvDecimalPointLength ),
+		  vn: normals.map( function( n ) {
+				return Math.round( n * Math.pow( 10, vnDecimalPointLength ) );
+			}),
+		  ns: 1 / Math.pow( 10, vnDecimalPointLength ),
+		  m: mtls,
+		  f: container
+		}];
 
 	}
 
@@ -739,10 +889,7 @@ MTLLoader.MaterialCreator.prototype = {
 
 		var mat = this.materialsInfo[ materialName ];
 		var params = {
-
-			name: materialName,
 			side: this.side
-
 		};
 
 		for ( var prop in mat ) {
