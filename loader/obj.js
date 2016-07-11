@@ -543,22 +543,22 @@ OBJLoader.prototype = {
 
 		console.timeEnd( 'OBJLoader' );
 
-		return [{
+		return {
 		  v: vertices.map( function( n ) {
 				return Math.round( n * Math.pow( 10, vecDecimalPointLength ) );
 			}),
-		  vs: 1 / Math.pow( 10, vecDecimalPointLength ),
+		  vs: Math.pow( 10, vecDecimalPointLength ),
 		  uv: uvs.map( function( n ) {
 				return Math.round( n * Math.pow( 10, uvDecimalPointLength ) );
 			}),
-		  us: 1 / Math.pow( 10, uvDecimalPointLength ),
+		  us: Math.pow( 10, uvDecimalPointLength ),
 		  vn: normals.map( function( n ) {
 				return Math.round( n * Math.pow( 10, vnDecimalPointLength ) );
 			}),
-		  ns: 1 / Math.pow( 10, vnDecimalPointLength ),
-		  m: mtls,
-		  f: container
-		}];
+		  ns: Math.pow( 10, vnDecimalPointLength ),
+		  mtls: mtls,
+		  geos: container
+		};
 
 	}
 
