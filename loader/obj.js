@@ -741,7 +741,7 @@ MTLLoader.MaterialCreator = function( baseUrl, options ) {
 	this.nameLookup = {};
 
 	this.side = ( this.options && this.options.side ) ? this.options.side : 0; // THREE.FrontSide
-	this.wrap = ( this.options && this.options.wrap ) ? this.options.wrap : 1000; // THREE.RepeatWrapping
+	this.wrap = ( this.options && this.options.wrap ) ? this.options.wrap : 0; // THREE.RepeatWrapping
 
 };
 
@@ -888,9 +888,8 @@ MTLLoader.MaterialCreator.prototype = {
 		// Create material
 
 		var mat = this.materialsInfo[ materialName ];
-		var params = {
-			side: this.side
-		};
+		var params = {};
+		if ( this.side ) params.side = this.side;
 
 		for ( var prop in mat ) {
 
@@ -906,7 +905,7 @@ MTLLoader.MaterialCreator.prototype = {
 
 					// Diffuse color (color under white light) using RGB values
 
-					params[ 'color' ] = value[ 0 ] * 0xff0000 + value[ 1 ] * 0xff00 + value[ 2 ] * 0xff;
+					params[ 'color' ] = Math.floor( value[ 0 ] * 0xff ) * 0x10000 + Math.floor( value[ 1 ] * 0xff ) * 0x100 + Math.floor( value[ 2 ] * 0xff );
 
 					break;
 
@@ -983,10 +982,13 @@ MTLLoader.MaterialCreator.prototype = {
 	},
 
 	loadTexture: function( url, wrap ) {
-		return {
+		var data = {
       type: "image",
-      src: url
+      src: url,
     };
+
+		if ( wrap ) data.wrap = wrap;
+		return data;
 	}
 
 };
